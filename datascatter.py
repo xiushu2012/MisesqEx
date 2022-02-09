@@ -98,35 +98,44 @@ def get_stock_finmv_file(stock,filefolder):
 
 def get_laststock_set(hs300,datadir):
 
-    allset = set([stock for stock in hs300])
-
+    allset = hs300
     print('沪深300个数',len(allset))
 
     existset = set()
+    
     if os.path.exists(datadir):
         filelist = os.listdir(datadir)
-        existset = set([stock.split('_')[0] for stock in filelist])
-
+        existset1 = set([stock.split('_')[0]  for stock in filelist if  'fin' in stock])
+        existset2 = set([stock.split('_')[0]  for stock in filelist if  'trade' in stock])
+        if len(existset1)-len(existset2)>0:
+            existset = existset2
+        else:
+            existset = existset1
+    #print("get_existstock_set",existset)
     lastset = allset - existset
-
+    #print("get_laststock_set1",lastset)
 
     getset = set()
-    if len(lastset) > 0:
+    if lastset :
         for stock in lastset:
             bget = get_stock_finmv_file(stock,datadir)
             if bget is False: 
                 print("get DataFrame fail:%s,folder:%s" % (stock,datadir))
+                time.sleep(5)
             else:
                 print("get DataFrame ok:%s,folder:%s" % (stock,datadir))
                 getset.add(stock)
 
     lastset = lastset - getset
-    
+    print("get_laststock_set2",lastset)
     return allset,lastset
 
 
 def copy_stock_set(datamx,hs300,destdir):
     bcopy = False
+    finsrcpath =''
+    tradesrcpath = ''
+   
     try:
         isExist = os.path.exists(destdir)
         if not isExist:
@@ -142,10 +151,12 @@ def copy_stock_set(datamx,hs300,destdir):
 
             finsrcpath = "%s/%s" % (datamx, finname)
             tradesrcpath = "%s/%s" % (datamx, tradename)
+
             shutil.copy(finsrcpath,fintopath)
             shutil.copy(tradesrcpath, tradetopath)
         bcopy = True
     except IOError:
+        print(finsrcpath,tradesrcpath)
         print("copy error files:%s" % destdir)
     finally:
         return bcopy
@@ -161,14 +172,15 @@ if __name__=='__main__':
     starttime = time.time()
 
     hisset =  set()
+    print("hisset1",hisset)
     for pot in potlist:
         print("time pot:",pot)
         hs300 = mises_time_df.loc[pot].values.tolist()
-        [hisset.add(it) for it in hs300]
+        [hisset.add(it) for it in hs300 if not math.isnan(float(it))]
 
-
+    print("hisset2",hisset)
     stockset,lastset = get_laststock_set(hisset, datamx)
-    if len(lastset) >0 :
+    if len(lastset)>0:
         print("###### get data not complete,set:%s ######" % (lastset))
     else:
         print("###### get data complete ######")
@@ -176,7 +188,8 @@ if __name__=='__main__':
 
     for pot in potlist:
         print("###time pot:",pot)
-        hs300 = mises_time_df.loc[pot].values.tolist()
+        hslist = mises_time_df.loc[pot].values.tolist()
+        hs300 = [it for it in hslist if not math.isnan(float(it))]
         destdir = dataex + '/' + pot.split(' ')[0]
         copyok = copy_stock_set(datamx,hs300,destdir)
         if copyok is False:
