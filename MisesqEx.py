@@ -73,16 +73,13 @@ def get_latest30_marketvalue(findf,fincolumn,tradedf,datecolumn,mvcolumn):
     count = 0
     value = 0
     days = 30
-    latest = ''
     for tup in zip(tradedf[datecolumn], tradedf[mvcolumn]):
         value += float(tup[1])*10000
         count += 1
 
-        if count == 1:
-            latest = tup[0]
         if count >= days:
             break
-    return (findf[fincolumn][0],value/days)
+    return (findf[fincolumn][0],value/count)
 
 
 
@@ -141,20 +138,23 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
         tradepath, tradesheet = get_akshare_stock_trade(tradeinpath, stock)
         #print("data of path:" + tradepath + "sheetname:" + tradesheet)
 
-        starttime = time.time()
+
         
         stock_a_indicator_df = pd.read_excel(tradepath, tradesheet, converters={'trade_date': str, 'total_mv': str})[['trade_date', 'total_mv']]
         stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'截止日期': str, '资产总计': str})[['截止日期', '资产总计']]
 
-
-
+        starttime = 0;
         if stock_financial_abstract_df.empty or stock_a_indicator_df.empty:
             bget = False;
         else:
-        
+
+            starttime = time.time()
             #fin_date = datepot.split(' ')[0]
             #stock_financial_abstract_df = stock_financial_abstract_df[stock_financial_abstract_df['截止日期']< fin_date]
-            stock_a_indicator_df = stock_a_indicator_df[stock_a_indicator_df['trade_date'] <= datepot]
+            #print('datepot',datepot)
+            #print('stock_a_indicator_df1:', stock_a_indicator_df)
+            stock_a_indicator_df = stock_a_indicator_df[stock_a_indicator_df['trade_date'] == datepot]
+            #print('stock_a_indicator_df2:', stock_a_indicator_df)
             
             findatecol =  stock  +  'date'
             fintotalcol = stock  + 'finance'
@@ -168,6 +168,8 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
             mises_stock_df = stock_financial_abstract_df[stock_financial_abstract_df[mvtotalcol] != 0][[findatecol,fintotalcol,mvtotalcol]]
             #滤除>50 的数据,民生2008年9月数据可能有问题
             mises_stock_df = mises_stock_df[(mises_stock_df[mvtotalcol] / mises_stock_df[fintotalcol]) < 50 ][[findatecol,fintotalcol,mvtotalcol]]
+            #print('mises_stock_df:',       mises_stock_df)
+
             latestmv = get_latest30_marketvalue(stock_financial_abstract_df,fintotalcol,stock_a_indicator_df,'trade_date','total_mv')
             bget = True;
         
@@ -193,28 +195,6 @@ def get_time_df(timepath):
     time_df =  pd.read_excel(timepath,"analy",index_col=[0],dtype=str)
     return time_df
 
-def get_stock_finmv_file(stock,filefolder):
-    bget = False
-    try:
-        isExist = os.path.exists(filefolder)
-        if not isExist:
-            os.makedirs(filefolder)
-            print("AkShareFile:%s create" % (filefolder))
-        else:
-            print("AkShareFile:%s exist" % (filefolder))
-
-        fininpath = "%s/%s%s" % (filefolder, stock, '_fin_in.xlsx')
-        tradeinpath = "%s/%s%s" % (filefolder, stock, '_trade_in.xlsx')
-
-        get_akshare_stock_financial(fininpath, stock)
-        get_akshare_stock_trade(tradeinpath, stock)
-
-        bget = True
-    except IOError:
-        print("read error file:%s" % stock)
-    finally:
-        return bget
-
 def get_laststock_set(hs300,datadir):
 
     allset = set([stock for stock in hs300])
@@ -227,19 +207,6 @@ def get_laststock_set(hs300,datadir):
         existset = set([stock.split('_')[0] for stock in filelist])
 
     lastset = allset - existset
-
-
-    getset = set()
-    if len(lastset) > 0:
-        for stock in lastset:
-            bget = get_stock_finmv_file(stock,datadir)
-            if bget is False: 
-                print("get DataFrame fail:%s,folder:%s" % (stock,datadir))
-            else:
-                print("get DataFrame ok:%s,folder:%s" % (stock,datadir))
-                getset.add(stock)
-
-    lastset = lastset - getset
     
     return allset,lastset
 
@@ -298,8 +265,6 @@ if __name__=='__main__':
     potlist = mises_time_df.index.values
     mises_global_df = pd.DataFrame(index=potlist)
 
-
-
     starttime = time.time()
     for pot in potlist[0:-1]:
         print("time pot:",pot)
@@ -337,7 +302,7 @@ if __name__=='__main__':
             #continue
 
         for stock in stockset:
-            bget,mises_stock_df,latestmv = calc_stock_finmv_df(pot,stock,datadir)
+            bget,mises_stock_df,latestmv = calc_stock_finmv_df(potlast,stock,datadir)
             if bget is False:
                 print("get empty DataFrame:%s" % stock)
                 continue
