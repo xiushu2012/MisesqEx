@@ -153,7 +153,11 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
             #stock_financial_abstract_df = stock_financial_abstract_df[stock_financial_abstract_df['截止日期']< fin_date]
             #print('datepot',datepot)
             #print('stock_a_indicator_df1:', stock_a_indicator_df)
-            stock_a_indicator_df = stock_a_indicator_df[stock_a_indicator_df['trade_date'] == datepot]
+            datepotstart = (datetime.datetime.strptime(datepot,"%Y-%m-%d %H:%M:%S")+datetime.timedelta(days=-10)).strftime("%Y-%m-%d %H:%M:%S")
+            datepotend = (datetime.datetime.strptime(datepot,"%Y-%m-%d %H:%M:%S")+datetime.timedelta(days=10)).strftime("%Y-%m-%d %H:%M:%S")
+            #print(datepotstart,datepotend)
+            stock_a_indicator_df = stock_a_indicator_df[(stock_a_indicator_df['trade_date'] >datepotstart) & (stock_a_indicator_df['trade_date'] < datepotend) ]
+
             #print('stock_a_indicator_df2:', stock_a_indicator_df)
             
             findatecol =  stock  +  'date'
