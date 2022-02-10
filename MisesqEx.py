@@ -59,17 +59,22 @@ def get_mvalue_number(tradedf,date,datecolumn,mvcolumn):
             return r[mvcolumn]
     return 0
 
-def get_mvalue_number2(tradedf,date,datecolumn,mvcolumn):
+def get_mvalue_number2(tradedf,date,datecolumn,mvcolumn,debt):
     #for tup in zip(tradedf['trade_date'], tradedf['total_mv']):
     #    if tup[0] ==  date:
     #        return float(tup[1])*10000
+    if debt == 0:
+        return 0
+
     intdate = get_time_stamp(date)
     for tup in zip(tradedf[datecolumn], tradedf[mvcolumn]):
         if get_time_stamp(tup[0]) <= intdate:
-            return float(tup[1])*10000
+            return float(tup[1])*10000+debt
     return 0
 
-def get_latest30_marketvalue(findf,fincolumn,tradedf,datecolumn,mvcolumn):
+def get_latest30_marketvalue(findf,fincolumn,debtcol,tradedf,datecolumn,mvcolumn):
+    if 0 == findf[debtcol][0]:
+        return (0,0)
     count = 0
     value = 0
     days = 30
@@ -79,7 +84,7 @@ def get_latest30_marketvalue(findf,fincolumn,tradedf,datecolumn,mvcolumn):
 
         if count >= days:
             break
-    return (findf[fincolumn][0],value/count)
+    return (findf[fincolumn][0],value/count+findf[debtcol][0])
 
 
 
@@ -141,7 +146,7 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
 
         
         stock_a_indicator_df = pd.read_excel(tradepath, tradesheet, converters={'trade_date': str, 'total_mv': str})[['trade_date', 'total_mv']]
-        stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'截止日期': str, '资产总计': str})[['截止日期', '资产总计']]
+        stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'截止日期': str, '资产总计': str,'长期负债合计':str})[['截止日期', '资产总计','长期负债合计']]
 
         starttime = 0;
         if stock_financial_abstract_df.empty or stock_a_indicator_df.empty:
@@ -162,11 +167,13 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
             
             findatecol =  stock  +  'date'
             fintotalcol = stock  + 'finance'
+            debttotalcol = stock + 'debt'
             mvtotalcol =  stock  +  'maket'
 
             stock_financial_abstract_df[findatecol] = stock_financial_abstract_df.apply(lambda row: get_fin_date(row['截止日期']),axis=1)
             stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['资产总计']),axis=1)
-            stock_financial_abstract_df[mvtotalcol] = stock_financial_abstract_df.apply(lambda row: get_mvalue_number2(stock_a_indicator_df, row[findatecol],'trade_date','total_mv'), axis=1)
+            stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['长期负债合计']), axis=1)
+            stock_financial_abstract_df[mvtotalcol] = stock_financial_abstract_df.apply(lambda row: get_mvalue_number2(stock_a_indicator_df, row[findatecol],'trade_date','total_mv',row[debttotalcol]), axis=1)
 
 
             mises_stock_df = stock_financial_abstract_df[stock_financial_abstract_df[mvtotalcol] != 0][[findatecol,fintotalcol,mvtotalcol]]
@@ -174,7 +181,7 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
             mises_stock_df = mises_stock_df[(mises_stock_df[mvtotalcol] / mises_stock_df[fintotalcol]) < 50 ][[findatecol,fintotalcol,mvtotalcol]]
             #print('mises_stock_df:',       mises_stock_df)
 
-            latestmv = get_latest30_marketvalue(stock_financial_abstract_df,fintotalcol,stock_a_indicator_df,'trade_date','total_mv')
+            latestmv = get_latest30_marketvalue(stock_financial_abstract_df,fintotalcol,debttotalcol,stock_a_indicator_df,'trade_date','total_mv')
             bget = True;
         
         endtime = time.time()
