@@ -121,7 +121,7 @@ def get_laststock_set(hs300,datadir):
             bget = get_stock_finmv_file(stock,datadir)
             if bget is False: 
                 print("get DataFrame fail:%s,folder:%s" % (stock,datadir))
-                time.sleep(5)
+                #time.sleep(1)
             else:
                 print("get DataFrame ok:%s,folder:%s" % (stock,datadir))
                 getset.add(stock)
@@ -161,7 +161,48 @@ def copy_stock_set(datamx,hs300,destdir):
     finally:
         return bcopy
 
+
+def del_stock_set(datamx,hs300):
+    bdel = False
+    finsrcpath = ''
+    tradesrcpath = ''
+
+    try:
+        isExist = os.path.exists(datamx)
+        if not isExist:
+            print("del_stock_set:%s not exist" % (datamx))
+            return bdel
+
+        for stock in hs300:
+            finname, tradename = gen_stock_filename(stock)
+            finsrcpath = "%s/%s" % (datamx, finname)
+            tradesrcpath = "%s/%s" % (datamx, tradename)
+            if os.path.exists(finsrcpath):
+                os.remove(finsrcpath)
+                print("del file:%s ok" % finsrcpath)
+            else:
+                print("del file:%s,not exist" % finsrcpath)
+
+
+            if os.path.exists(tradesrcpath):
+                os.remove(tradesrcpath)
+                print("del files:%s,ok" % tradesrcpath)
+            else:
+                print("del files:%s,not exist" % tradesrcpath)
+
+        bdel = True
+    except IOError:
+        print("del error files:%s,%s" % (finsrcpath,tradesrcpath))
+    finally:
+        return bdel
+
 if __name__=='__main__':
+    from sys import argv
+    if len(argv) > 1:
+        flag = argv[1]
+    else:
+        print("'python Misesq.py [increment|completely]'")
+        exit(1)
 
     timepath = r'./timeex.xlsx'
     datamx = r'./datamx'
@@ -169,16 +210,27 @@ if __name__=='__main__':
     mises_time_df = get_time_df(timepath)
     potlist = mises_time_df.index.values
 
+    if flag=='increment':
+        potlist = potlist[-1:]
+        hs300 = mises_time_df.loc[potlist[0]].values.tolist()
+        delset = ([it for it in hs300 if not math.isnan(float(it))])
+        del_stock_set(datamx,delset)
+        print('data update for increment',potlist)
+    else:
+        print("date update for completely", potlist)
+
     starttime = time.time()
 
     hisset =  set()
     print("hisset1",hisset)
+
     for pot in potlist:
         print("time pot:",pot)
         hs300 = mises_time_df.loc[pot].values.tolist()
         [hisset.add(it) for it in hs300 if not math.isnan(float(it))]
 
     print("hisset2",hisset)
+
     stockset,lastset = get_laststock_set(hisset, datamx)
     if len(lastset)>0:
         print("###### get data not complete,set:%s ######" % (lastset))
