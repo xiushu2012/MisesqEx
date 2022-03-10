@@ -212,7 +212,7 @@ if __name__=='__main__':
     mises_time_df = get_time_df(timepath)
     potlist = mises_time_df.index.values
 
-    if flag=='increment':
+    if flag=='inc':
         potlist = potlist[-1:]
         hs300 = mises_time_df.loc[potlist[0]].values.tolist()
         delset = ([it for it in hs300 if not math.isnan(float(it))])
