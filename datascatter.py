@@ -201,7 +201,9 @@ if __name__=='__main__':
     if len(argv) > 1:
         flag = argv[1]
     else:
-        print("'python Misesq.py [increment|completely]'")
+        print("'python Misesq.py [inc|com]'")
+        print("setp1 'Misesq.py inc' for clear   old   hs300 in timeex")
+        print("setp2 'Misesq.py com' for repeate update hs300 in timeex")
         exit(1)
 
     timepath = r'./timeex.xlsx'
