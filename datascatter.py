@@ -121,10 +121,11 @@ def get_laststock_set(hs300,datadir):
             bget = get_stock_finmv_file(stock,datadir)
             if bget is False: 
                 print("get DataFrame fail:%s,folder:%s" % (stock,datadir))
-                #time.sleep(1)
+
             else:
                 print("get DataFrame ok:%s,folder:%s" % (stock,datadir))
                 getset.add(stock)
+            #time.sleep(1)
 
     lastset = lastset - getset
     print("get_laststock_set2",lastset)
