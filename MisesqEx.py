@@ -221,6 +221,28 @@ def get_laststock_set(hs300,datadir):
     
     return allset,lastset
 
+def get_legacy_misesq(legacypath,timelist):
+
+    mises_global_df = pd.DataFrame()
+    legacy_misesq_df = pd.read_excel(legacypath,'Sheet1',index_col=[0])
+    
+    
+    dfindex = legacy_misesq_df.index.values.tolist()
+    for rowNum in range(len(dfindex)):
+        timeidx = dfindex[rowNum]
+        if timeidx in timelist:
+           legacyline = (legacy_misesq_df[timeidx:timeidx]).iloc[:,0:-5]
+           #print(legacyline)
+           mises_global_df = pd.concat([mises_global_df,legacyline])
+    
+    #print(mises_global_df.iloc[:, -1])
+    lastset = set(timelist) - set(mises_global_df.index.values.tolist())
+    lastlist = list(lastset);lastlist.sort()
+    #print(lastlist)
+    mises_increment_df = pd.DataFrame(index=lastlist)
+    mises_global_df = pd.concat([mises_global_df,mises_increment_df])
+    
+    return lastlist,mises_global_df
 
 def out_put_dataframe(mises_global_df):
     x_data  =  [ dt[2:] for dt in mises_global_df.index.values.tolist() ]
@@ -270,11 +292,16 @@ def out_put_dataframe(mises_global_df):
 
 if __name__=='__main__':
 
-    timepath = r'./timeex.xlsx'
-
+    timepath =     r'./timeex.xlsx'
+    legacypath =   r'./misesqbase.xlsx'
+    
     mises_time_df = get_time_df(timepath)
-    potlist = mises_time_df.index.values
-    mises_global_df = pd.DataFrame(index=potlist)
+    timelist = mises_time_df.index.values
+    #mises_global_df = pd.DataFrame(index=timelist)
+
+    potlist,mises_global_df = get_legacy_misesq(legacypath,timelist)
+    #print(potlist,mises_global_df)
+    #exit(0)
 
     starttime = time.time()
     for pot in potlist[0:-1]:
@@ -329,6 +356,7 @@ if __name__=='__main__':
 
     endtime = time.time()
     print("Time(s) used",endtime-starttime)
+
 
     MisesqIndex = '米塞斯指数'
     mises_global_df[MisesqIndex] = mises_global_df.apply(lambda row: calc_value_tobinsq(row), axis=1)
