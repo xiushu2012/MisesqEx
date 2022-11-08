@@ -304,7 +304,7 @@ if __name__=='__main__':
     #exit(0)
 
     starttime = time.time()
-    for pot in potlist[0:-1]:
+    for pot in potlist:
         print("time pot:",pot)
         hs300 = mises_time_df.loc[pot].values.tolist()
         datadir = './dataex/' + pot.split(' ')[0]
@@ -327,32 +327,14 @@ if __name__=='__main__':
                         mises_global_df.loc[tup[1], col_name[2]] = tup[3]
                 except KeyError:
                     print("stock:%s,time:%s,location error" % (stock,tup[1]))
-
-
-
-    for potlast in potlist[-1:]:
-        print("time potlast:",potlast)
-        hs300 = mises_time_df.loc[potlast].values.tolist()
-        datadir = './dataex/' + potlast.split(' ')[0]
-        stockset,lastset = get_laststock_set(hs300, datadir)
-        if len(lastset) >0 :
-            print("time %s stock data is not complete,set:%s" % (potlast,lastset))
-            #continue
-
-        for stock in stockset:
-            bget,mises_stock_df,latestmv = calc_stock_finmv_df(potlast,stock,datadir)
-            if bget is False:
-                print("get empty DataFrame:%s" % stock)
-                continue
-            
-            fintotalcol = stock  + 'finance'
-            mvtotalcol =  stock  +  'maket'
-
-            try:
-               mises_global_df.loc[potlast, fintotalcol] = latestmv[0]
-               mises_global_df.loc[potlast, mvtotalcol] = latestmv[1]
-            except KeyError:
-               print("stock:%s,time:%s,location error" % (stock,tup[1]))
+            if pot == potlist[-1]:
+               fintotalcol = stock  + 'finance'
+               mvtotalcol =  stock  +  'maket'
+               try:
+                  mises_global_df.loc[pot, fintotalcol] = latestmv[0]
+                  mises_global_df.loc[pot, mvtotalcol] = latestmv[1]
+               except KeyError:
+                  print("stock:%s,time:%s,location error" % (stock,pot))
 
     endtime = time.time()
     print("Time(s) used",endtime-starttime)
