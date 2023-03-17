@@ -17,8 +17,10 @@ def get_akshare_stock_financial(xlsfile,stock):
         shname='financial'
         isExist = os.path.exists(xlsfile)
         if not isExist:
-            stock_financial_abstract_df = ak.stock_financial_abstract(stock)
-            stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
+#            stock_financial_abstract_df = ak.stock_financial_abstract(stock)
+#            stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
+            stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=stock)
+            stock_financial_analysis_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
         else:
             print("xfsfile:%s exist" % (xlsfile))
@@ -43,15 +45,25 @@ def get_akshare_stock_trade(xlsfile,stock):
     else:
         return xlsfile, shname
 
+#def get_fin_number(strcounts):
+#    if strcounts is np.nan:
+#        return 0
+#    else:
+#        counts = float(strcounts[0:-1].replace(',',''))
+#        return counts
+
+def get_fin_date(time):
+    return time+" 00:00:00"
+    
 def get_fin_number(strcounts):
     if strcounts is np.nan:
         return 0
     else:
-        counts = float(strcounts[0:-1].replace(',',''))
+        counts = float(strcounts)
         return counts
 
-def get_fin_date(time):
-    return time+" 00:00:00"
+def get_debt_number(fin,debt):
+    return float(fin)*float(debt)/100
 
 def get_mvalue_number(tradedf,date,datecolumn,mvcolumn):
     for i,r in tradedf.iterrows():
@@ -146,7 +158,11 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
 
         
         stock_a_indicator_df = pd.read_excel(tradepath, tradesheet, converters={'trade_date': str, 'total_mv': str})[['trade_date', 'total_mv']]
-        stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'截止日期': str, '资产总计': str,'长期负债合计':str})[['截止日期', '资产总计','长期负债合计']]
+#       stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'截止日期': str, '资产总计': str,'长期负债合计':str})[['截止日期', '资产总计','长期负债合计']]
+
+        stock_financial_abstract_df = pd.read_excel(finpath, finsheet, converters={'日期': str, '总资产(元)': str,'资产负债率(%)':str})[['日期', '总资产(元)', '资产负债率(%)']]
+        stock_financial_abstract_df = stock_financial_abstract_df.sort_values('日期', ascending=False)
+        stock_financial_abstract_df = stock_financial_abstract_df.replace('--','0')
 
         starttime = 0;
         if stock_financial_abstract_df.empty or stock_a_indicator_df.empty:
@@ -170,9 +186,16 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
             debttotalcol = stock + 'debt'
             mvtotalcol =  stock  +  'maket'
 
-            stock_financial_abstract_df[findatecol] = stock_financial_abstract_df.apply(lambda row: get_fin_date(row['截止日期']),axis=1)
-            stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['资产总计']),axis=1)
-            stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['长期负债合计']), axis=1)
+#           stock_financial_abstract_df[findatecol] = stock_financial_abstract_df.apply(lambda row: get_fin_date(row['截止日期']),axis=1)
+#           stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['资产总计']),axis=1)
+#           stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['长期负债合计']), axis=1)
+
+
+            stock_financial_abstract_df[findatecol] = stock_financial_abstract_df.apply(lambda row: get_fin_date(row['日期']),axis=1)
+            stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['总资产(元)']),axis=1)
+            stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_debt_number(row['总资产(元)'],row['资产负债率(%)']), axis=1)
+
+
             stock_financial_abstract_df[mvtotalcol] = stock_financial_abstract_df.apply(lambda row: get_mvalue_number2(stock_a_indicator_df, row[findatecol],'trade_date','total_mv',row[debttotalcol]), axis=1)
 
 

@@ -15,8 +15,10 @@ def get_akshare_stock_financial(xlsfile,stock):
         shname='financial'
         isExist = os.path.exists(xlsfile)
         if not isExist:
-            stock_financial_abstract_df = ak.stock_financial_abstract(stock)
-            stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
+#            stock_financial_abstract_df = ak.stock_financial_abstract(stock)
+#            stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
+            stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=stock)
+            stock_financial_analysis_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
         else:
             print("xfsfile:%s exist" % (xlsfile))
