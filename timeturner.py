@@ -98,7 +98,8 @@ if __name__=='__main__':
               seq = seq + 1 
      
         new=pd.DataFrame(selectdict,index=[time])
-        hs300_timedata_df = hs300_timedata_df.append(new)
+        #hs300_timedata_df = hs300_timedata_df.append(new)
+        hs300_timedata_df = pd.concat([hs300_timedata_df,new])
     hs300_timedata_df = hs300_timedata_df.where((hs300_timedata_df.notna()),'')
     print(hs300_timedata_df)
     out_put_df(hs300_timedata_df)
