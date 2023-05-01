@@ -34,7 +34,8 @@ def get_akshare_stock_trade(xlsfile,stock):
         shname='trade'
         isExist = os.path.exists(xlsfile)
         if not isExist:
-            stock_a_indicator_df = ak.stock_a_lg_indicator(stock)
+            #stock_a_indicator_df = ak.stock_a_lg_indicator(stock)
+            stock_a_indicator_df = ak.stock_a_indicator_lg(stock)
             stock_a_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
         else:
