@@ -15,19 +15,19 @@ def get_akshare_stock_financial(xlsfile,stock):
         shname='financial'
         isExist = os.path.exists(xlsfile)
         if not isExist:
-#            stock_financial_abstract_df = ak.stock_financial_abstract(stock)
-#            stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
+#           stock_financial_abstract_df = ak.stock_financial_abstract(stock)
+#           stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
             stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=stock)
             stock_financial_analysis_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
+            return True
         else:
             print("xfsfile:%s exist" % (xlsfile))
             #print(stock_financial_abstract_df)
+            return True
     except IOError:
         print("Error get stock financial:%s" % stock )
-        return '',''
-    else:
-        return xlsfile, shname
+        return False
 
 def get_akshare_stock_trade(xlsfile,stock):
     try:
@@ -38,13 +38,14 @@ def get_akshare_stock_trade(xlsfile,stock):
             stock_a_indicator_df = ak.stock_a_indicator_lg(stock)
             stock_a_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
+            return True
         else:
             print("xfsfile:%s exist" % (xlsfile))
+            return True
     except IOError:
         print("Error get stock trade:%s" % stock )
-        return '',''
-    else:
-        return xlsfile, shname
+        return False
+
 
 def get_fin_number(strcounts):
     if strcounts is np.nan:
@@ -87,10 +88,9 @@ def get_stock_finmv_file(stock,filefolder):
         fininpath = "%s/%s" % (filefolder, fininname)
         tradeinpath = "%s/%s" % (filefolder, tradeinname)
 
-
-        finout ,  finsheet = get_akshare_stock_financial(fininpath, stock)
-        tradeout, tradesheet = get_akshare_stock_trade(tradeinpath, stock)
-        if ( finout | tradeout):
+        finout  = get_akshare_stock_financial(fininpath, stock)
+        tradeout = get_akshare_stock_trade(tradeinpath, stock)
+        if ( finout and tradeout):
             bget = True
     except IOError:
         print("read error file:%s" % stock)
