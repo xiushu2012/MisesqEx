@@ -52,8 +52,18 @@ def get_akshare_stock_trade(xlsfile,stock):
 #        counts = float(strcounts[0:-1].replace(',',''))
 #        return counts
 
-def get_fin_date(time):
-    return time+" 00:00:00"
+def get_fin_date(time: str) -> str:
+    try:
+        # Check if time is already in required format
+        datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+        return time
+    except ValueError:
+        try:
+            # Try to parse as date only and append time
+            datetime.datetime.strptime(time, "%Y-%m-%d")
+            return f"{time} 00:00:00"
+        except ValueError:
+            raise ValueError("Invalid date format. Expected 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS'")
     
 def get_fin_number(strcounts):
     if strcounts is np.nan:
@@ -190,7 +200,7 @@ def calc_stock_finmv_df(datepot,stock,filefolder):
 #           stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['资产总计']),axis=1)
 #           stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['长期负债合计']), axis=1)
 
-
+            #不确定旧的stock_financial_abstract_df = pd.read_excel在这里是否补全了日期，目前是补全了
             stock_financial_abstract_df[findatecol] = stock_financial_abstract_df.apply(lambda row: get_fin_date(row['日期']),axis=1)
             stock_financial_abstract_df[fintotalcol] = stock_financial_abstract_df.apply(lambda row: get_fin_number(row['总资产(元)']),axis=1)
             stock_financial_abstract_df[debttotalcol] = stock_financial_abstract_df.apply(lambda row: get_debt_number(row['总资产(元)'],row['资产负债率(%)']), axis=1)

@@ -8,6 +8,84 @@ import datetime
 import os,shutil
 import time, datetime
 
+import requests
+import random
+from retrying import retry
+import signal
+import sys
+
+def get_proxy():
+    """Get a proxy from API"""
+    try:
+        api_url = "https://dps.kdlapi.com/api/getdps/?secret_id=oamnvm49mywk3o13f0uv&signature=pnxpfsj9zudf84sxq8r9cs3f5od8nj07&num=1&pt=1&sep=1"
+        proxy_ip = requests.get(api_url).text.split('\n')[0]
+        
+        if proxy_ip:
+            username = "d2360994280"
+            password = "ez2qyn4q"
+            proxy = {
+                "http": f"http://{username}:{password}@{proxy_ip}/",
+                "https": f"http://{username}:{password}@{proxy_ip}/"
+            }
+            print("Got proxy:", proxy)
+            return proxy
+            
+        return None
+        
+    except Exception as e:
+        print(f"Failed to get proxy: {e}")
+        return None
+
+current_proxy = None
+
+def get_financial_data(symbol):
+    current_year = datetime.datetime.now().year
+    start_year = 2008
+    
+    while start_year <= current_year:
+        result = ak.stock_financial_analysis_indicator(symbol=symbol, start_year=str(start_year))
+        if not result.empty:
+            return result
+        start_year += 1
+    
+    return None  # Return None if no data found for any year
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
+def stock_financial_analysis_indicator_with_proxy(symbol):
+    global current_proxy
+    if not current_proxy:
+        current_proxy = get_proxy()
+        print(f'current_proxy:{current_proxy}')
+        
+    try:
+        with requests.Session() as session:
+            session.proxies = current_proxy
+            ak.requests = session
+            #result = ak.stock_financial_analysis_indicator(symbol=symbol,start_year="2008")
+            result = get_financial_data(symbol=symbol)
+            #print(result)
+            return result
+    except Exception as e:
+        print(f"stock_financial_analysis_indicator failed for symbol {symbol}: {e}")
+        current_proxy = get_proxy()
+        raise e
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
+def stock_a_indicator_lg_with_proxy(stock):
+    global current_proxy
+    if not current_proxy:
+        current_proxy = get_proxy()
+        print(f'current_proxy:{current_proxy}')
+    try:
+        with requests.Session() as session:
+            session.proxies = current_proxy
+            ak.requests = session
+            result = ak.stock_a_indicator_lg(symbol=stock)
+            return result
+    except Exception as e:
+        print(f"stock_a_indicator_lg failed for stock {stock}: {e}")
+        current_proxy = get_proxy()
+        raise e
 
 
 def get_akshare_stock_financial(xlsfile,stock):
@@ -17,8 +95,10 @@ def get_akshare_stock_financial(xlsfile,stock):
         if not isExist:
 #           stock_financial_abstract_df = ak.stock_financial_abstract(stock)
 #           stock_financial_abstract_df.to_excel(xlsfile,sheet_name=shname)
-            stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=stock)
+
+            stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_with_proxy(symbol=stock)
             stock_financial_analysis_indicator_df.to_excel(xlsfile,sheet_name=shname)
+            
             print("xfsfile:%s create" % (xlsfile))
             return True
         else:
@@ -35,7 +115,7 @@ def get_akshare_stock_trade(xlsfile,stock):
         isExist = os.path.exists(xlsfile)
         if not isExist:
             #stock_a_indicator_df = ak.stock_a_lg_indicator(stock)
-            stock_a_indicator_df = ak.stock_a_indicator_lg(stock)
+            stock_a_indicator_df = stock_a_indicator_lg_with_proxy(stock)
             stock_a_indicator_df.to_excel(xlsfile,sheet_name=shname)
             print("xfsfile:%s create" % (xlsfile))
             return True
@@ -200,63 +280,74 @@ def del_stock_set(datamx,hs300):
     finally:
         return bdel
 
+
+def signal_handler(sig, frame):
+    print('\nCtrl+C detected, exiting...')
+    # Force exit the program
+    os._exit(0)  # Use os._exit instead of sys.exit
+
+signal.signal(signal.SIGINT, signal_handler)
+
 if __name__=='__main__':
-    from sys import argv
-    if len(argv) > 1:
-        flag = argv[1]
-    else:
-        print("'python Misesq.py [inc|com]'")
-        print("setp1 'Misesq.py inc' for clear   old   hs300 in timeex")
-        print("setp2 'Misesq.py com' for repeate update hs300 in timeex")
-        exit(1)
-
-    timepath = r'./timeex.xlsx'
-    datamx = r'./datamx'
-    dataex = r'./dataex'
-    mises_time_df = get_time_df(timepath)
-    potlist = mises_time_df.index.values
-
-    if flag=='inc':
-        potlist = potlist[-1:]
-        hs300 = mises_time_df.loc[potlist[0]].values.tolist()
-        delset = ([it for it in hs300 if not math.isnan(float(it))])
-        del_stock_set(datamx,delset)
-        print('data update for increment',potlist)
-    else:
-        print("date update for completely", potlist)
-
-    starttime = time.time()
-
-    hisset =  set()
-    print("hisset1",hisset)
-
-    for pot in potlist:
-        print("time pot:",pot)
-        hs300 = mises_time_df.loc[pot].values.tolist()
-        [hisset.add(it) for it in hs300 if not math.isnan(float(it))]
-
-    print("hisset2",hisset)
-
-    stockset,lastset = get_laststock_set(hisset, datamx)
-    if len(lastset)>0:
-        print("###### get data not complete,set:%s ######" % (lastset))
-    else:
-        print("###### get data complete ######")
-
-
-    for pot in potlist:
-        print("###time pot:",pot)
-        hslist = mises_time_df.loc[pot].values.tolist()
-        hs300 = [it for it in hslist if not math.isnan(float(it))]
-        destdir = dataex + '/' + pot.split(' ')[0]
-        copyok = copy_stock_set(datamx,hs300,destdir)
-        if copyok is False:
-            print("time %s copy data not complete" % (pot))
+    try:
+        signal.signal(signal.SIGINT, signal_handler)
+        from sys import argv
+        if len(argv) > 1:
+            flag = argv[1]
         else:
-            print("time %s copy data  complete" % (pot))
+            print("'python Misesq.py [inc|com]'")
+            print("setp1 'Misesq.py inc' for clear   old   hs300 in timeex")
+            print("setp2 'Misesq.py com' for repeate update hs300 in timeex")
+            exit(1)
+
+        timepath = r'./timeex.xlsx'
+        datamx = r'./datamx'
+        dataex = r'./dataex'
+        mises_time_df = get_time_df(timepath)
+        potlist = mises_time_df.index.values
+
+        if flag=='inc':
+            potlist = potlist[-1:]
+            hs300 = mises_time_df.loc[potlist[0]].values.tolist()
+            delset = ([it for it in hs300 if not math.isnan(float(it))])
+            del_stock_set(datamx,delset)
+            print('data update for increment',potlist)
+        else:
+            print("date update for completely", potlist)
+
+        starttime = time.time()
+
+        hisset =  set()
+        print("hisset1",hisset)
+
+        for pot in potlist:
+            print("time pot:",pot)
+            hs300 = mises_time_df.loc[pot].values.tolist()
+            [hisset.add(it) for it in hs300 if not math.isnan(float(it))]
+
+        print("hisset2",hisset)
+
+        stockset,lastset = get_laststock_set(hisset, datamx)
+        if len(lastset)>0:
+            print("###### get data not complete,set:%s ######" % (lastset))
+        else:
+            print("###### get data complete ######")
 
 
-    endtime = time.time()
-    print("Time(s) used",endtime-starttime)
+        for pot in potlist:
+            print("###time pot:",pot)
+            hslist = mises_time_df.loc[pot].values.tolist()
+            hs300 = [it for it in hslist if not math.isnan(float(it))]
+            destdir = dataex + '/' + pot.split(' ')[0]
+            copyok = copy_stock_set(datamx,hs300,destdir)
+            if copyok is False:
+                print("time %s copy data not complete" % (pot))
+            else:
+                print("time %s copy data  complete" % (pot))
 
 
+        endtime = time.time()
+        print("Time(s) used",endtime-starttime)
+    except KeyboardInterrupt:
+        print('\nCtrl+C detected, exiting...')
+        os._exit(0)  # Use os._exit instead of sys.exit
